@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление организационной структурой</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            background: #f5f7fa;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 0.5rem;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .card h3 {
+            margin-top: 0;
+            color: #2980b9;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .response {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            margin-top: 10px;
+            font-size: 12px;
+            max-height: 200px;
+            overflow: auto;
+        }
+        .error {
+            background: #e74c3c;
+            color: white;
+        }
+        input, select {
+            padding: 6px 10px;
+            margin: 5px 10px 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .inline {
+            display: inline-block;
+        }
+        hr {
+            margin: 1rem 0;
+        }
+        label {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📁 Управление организационной структурой</h1>
+    <div class="card">
+        <h3>➕ 1. Создать подразделение</h3>
+        <label>Название:</label> <input type="text" id="deptName" placeholder="Например: IT">
+        <label>ID родителя (необязательно):</label> <input type="number" id="parentId" placeholder="оставьте пустым для корня">
+        <button onclick="createDepartment()">Создать</button>
+        <div id="createDeptResponse" class="response"></div>
+    </div>
+
+    <div class="card">
+        <h3>👤 2. Создать сотрудника</h3>
+        <label>ID подразделения:</label> <input type="number" id="empDeptId" placeholder="ID">
+        <label>ФИО:</label> <input type="text" id="empName" placeholder="Иванов Иван">
+        <label>Должность:</label> <input type="text" id="empPosition" placeholder="Разработчик">
+        <label>Дата найма (опционально):</label> <input type="date" id="empHiredAt">
+        <button onclick="createEmployee()">Создать</button>
+        <div id="createEmpResponse" class="response"></div>
+    </div>
+
+    <div class="card">
+        <h3>🔍 3. Получить подразделение (с деревом)</h3>
+        <label>ID подразделения:</label> <input type="number" id="getDeptId" placeholder="ID">
+        <label>Глубина (1-5):</label> <input type="number" id="depth" value="1" min="1" max="5">
+        <label>Включить сотрудников:</label>
+        <select id="includeEmployees">
+            <option value="true">Да</option>
+            <option value="false">Нет</option>
+        </select>
+        <button onclick="getDepartment()">Получить</button>
+        <div id="getDeptResponse" class="response"></div>
+    </div>
+
+    <div class="card">
+        <h3>🔄 4. Переместить подразделение</h3>
+        <label>ID подразделения:</label> <input type="number" id="moveDeptId" placeholder="ID">
+        <label>Новое имя (опционально):</label> <input type="text" id="newName" placeholder="Новое имя">
+        <label>Новый родитель (ID или пусто для корня):</label> <input type="number" id="newParentId" placeholder="ID">
+        <button onclick="moveDepartment()">Переместить/переименовать</button>
+        <div id="moveDeptResponse" class="response"></div>
+    </div>
+
+    <div class="card">
+        <h3>🗑️ 5. Удалить подразделение</h3>
+        <label>ID подразделения:</label> <input type="number" id="deleteDeptId" placeholder="ID">
+        <label>Режим:</label>
+        <select id="deleteMode">
+            <option value="cascade">Cascade (удалить всё поддерево)</option>
+            <option value="reassign">Reassign (перевести сотрудников и детей)</option>
+        </select>
+        <div id="reassignBlock" style="margin-top: 10px; display: none;">
+            <label>ID подразделения для перевода:</label> <input type="number" id="reassignToId" placeholder="Обязательно для reassign">
+        </div>
+        <button onclick="deleteDepartment()">Удалить</button>
+        <div id="deleteDeptResponse" class="response"></div>
+    </div>
+
+    <script>
+        document.getElementById('deleteMode').addEventListener('change', function() {
+            var reassignBlock = document.getElementById('reassignBlock');
+            reassignBlock.style.display = this.value === 'reassign' ? 'block' : 'none';
+        });
+        document.getElementById('deleteMode').dispatchEvent(new Event('change'));
+
+        async function request(url, method, body) {
+            const options = {
+                method: method,
+                headers: { 'Content-Type': 'application/json' }
+            };
+            if (body) options.body = JSON.stringify(body);
+            const response = await fetch(url, options);
+            const data = await response.json().catch(() => ({}));
+            return { status: response.status, data };
+        }
+
+        function showResponse(divId, status, data) {
+            const div = document.getElementById(divId);
+            div.innerHTML = `Статус: ${status}\nОтвет: ${JSON.stringify(data, null, 2)}`;
+            div.classList.remove('error');
+            if (status >= 400) div.classList.add('error');
+            else div.classList.remove('error');
+        }
+
+        window.createDepartment = async function() {
+            const name = document.getElementById('deptName').value.trim();
+            if (!name) { alert('Введите название'); return; }
+            const parentIdRaw = document.getElementById('parentId').value;
+            const parent_id = parentIdRaw === '' ? null : parseInt(parentIdRaw, 10);
+            const { status, data } = await request('/departments/', 'POST', { name, parent_id });
+            showResponse('createDeptResponse', status, data);
+        }
+
+        window.createEmployee = async function() {
+            const deptId = parseInt(document.getElementById('empDeptId').value, 10);
+            const full_name = document.getElementById('empName').value.trim();
+            const position = document.getElementById('empPosition').value.trim();
+            const hired_at = document.getElementById('empHiredAt').value || null;
+            if (isNaN(deptId) || !full_name || !position) { alert('Заполните ID подразделения, ФИО и должность'); return; }
+            const body = { full_name, position };
+            if (hired_at) body.hired_at = hired_at;
+            const { status, data } = await request(`/departments/${deptId}/employees`, 'POST', body);
+            showResponse('createEmpResponse', status, data);
+        }
+
+        window.getDepartment = async function() {
+            const id = parseInt(document.getElementById('getDeptId').value, 10);
+            if (isNaN(id)) { alert('Введите ID подразделения'); return; }
+            const depth = parseInt(document.getElementById('depth').value, 10);
+            const includeEmployees = document.getElementById('includeEmployees').value === 'true';
+            const url = `/departments/${id}?depth=${depth}&include_employees=${includeEmployees}`;
+            const { status, data } = await request(url, 'GET');
+            showResponse('getDeptResponse', status, data);
+        }
+
+        window.moveDepartment = async function() {
+            const id = parseInt(document.getElementById('moveDeptId').value, 10);
+            if (isNaN(id)) { alert('Введите ID подразделения'); return; }
+            const name = document.getElementById('newName').value.trim();
+            const parentIdRaw = document.getElementById('newParentId').value;
+            const parent_id = parentIdRaw === '' ? null : parseInt(parentIdRaw, 10);
+            const body = {};
+            if (name !== '') body.name = name;
+            if (parent_id !== null) body.parent_id = parent_id;
+            if (Object.keys(body).length === 0) { alert('Укажите хотя бы одно поле для обновления'); return; }
+            const { status, data } = await request(`/departments/${id}`, 'PATCH', body);
+            showResponse('moveDeptResponse', status, data);
+        }
+
+        window.deleteDepartment = async function() {
+            const id = parseInt(document.getElementById('deleteDeptId').value, 10);
+            if (isNaN(id)) { alert('Введите ID подразделения'); return; }
+            const mode = document.getElementById('deleteMode').value;
+            let url = `/departments/${id}?mode=${mode}`;
+            if (mode === 'reassign') {
+                const reassignTo = parseInt(document.getElementById('reassignToId').value, 10);
+                if (isNaN(reassignTo)) { alert('Укажите ID подразделения для перевода сотрудников и дочерних отделов'); return; }
+                url += `&reassign_to_department_id=${reassignTo}`;
+            }
+            const response = await fetch(url, { method: 'DELETE' });
+            let data;
+            try { data = await response.json(); } catch(e) { data = {}; }
+            showResponse('deleteDeptResponse', response.status, data);
+        }
+    </script>
+</body>
+</html>
