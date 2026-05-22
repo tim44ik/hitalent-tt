@@ -19,12 +19,6 @@ cd orgstructure
 
 Создайте файл `.env` (можно скопировать из примера):
 
-```bash
-cp .env.example .env
-```
-
-Отредактируйте при необходимости. Пример `.env`:
-
 ```
 DB_USER=postgres
 DB_PASSWORD=postgres
