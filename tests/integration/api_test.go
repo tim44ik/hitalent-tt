@@ -45,7 +45,6 @@ func TestCreateDepartmentAndEmployee(t *testing.T) {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	// 1. Создание корневого подразделения
 	createDeptBody := []byte(`{"name":"HR"}`)
 	resp, err := http.Post(ts.URL+"/departments/", "application/json", bytes.NewReader(createDeptBody))
 	require.NoError(t, err)
@@ -57,14 +56,12 @@ func TestCreateDepartmentAndEmployee(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "HR", dept.Name)
 
-	// 2. Создание сотрудника (без trailing slash в URL)
 	createEmpBody := []byte(`{"full_name":"Alice Smith","position":"Recruiter"}`)
 	empResp, err := http.Post(ts.URL+"/departments/"+strconv.Itoa(int(dept.ID))+"/employees",
 		"application/json", bytes.NewReader(createEmpBody))
 	require.NoError(t, err)
 	defer empResp.Body.Close()
 
-	// Читаем тело ответа для диагностики
 	bodyBytes, _ := io.ReadAll(empResp.Body)
 	bodyStr := string(bodyBytes)
 
@@ -77,7 +74,6 @@ func TestCreateDepartmentAndEmployee(t *testing.T) {
 	assert.Equal(t, "Recruiter", emp.Position)
 	assert.Equal(t, dept.ID, emp.DepartmentID)
 
-	// 3. Получение подразделения с сотрудниками
 	getResp, err := http.Get(ts.URL + "/departments/" + strconv.Itoa(int(dept.ID)) + "?include_employees=true")
 	require.NoError(t, err)
 	defer getResp.Body.Close()

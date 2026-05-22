@@ -147,7 +147,7 @@ func (r *departmentRepository) GetDepartmentTree(ctx context.Context, id uint, d
 }
 
 func (r *departmentRepository) loadChildren(ctx context.Context, dept *models.Department, remainingDepth int, includeEmployees bool) error {
-	if remainingDepth < 0 {
+	if remainingDepth <= 0 {
 		return nil
 	}
 	var children []models.Department
