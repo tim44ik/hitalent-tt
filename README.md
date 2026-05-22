@@ -11,7 +11,7 @@ REST API для управления иерархией подразделени
 ### 1. Склонируйте репозиторий
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/tim44ik/hitalent-tt
 cd orgstructure
 ```
 
