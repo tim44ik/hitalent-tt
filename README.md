@@ -22,7 +22,7 @@ cd orgstructure
 ```
 DB_USER=postgres
 DB_PASSWORD=postgres
-DB_NAME=hitalent-test
+DB_NAME=orgstructure
 SERVER_PORT=8080
 ```
 
@@ -138,8 +138,6 @@ go test -v ./tests/unit/...
 ```bash
 go test -v ./tests/integration/...
 ```
-
-> Для полноценного тестирования с PostgreSQL можно использовать **testcontainers** (код приведён в комментариях к тестам).
 
 ---
 
